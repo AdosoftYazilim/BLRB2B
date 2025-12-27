@@ -1,0 +1,64 @@
+## .NET
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rm][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+.vscode/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.mdf
+*.ldf
+
+# SQL Server
+*.bak
+*.trn
+
+# App settings
+appsettings.Development.json
+appsettings.Production.json
+!appsettings.example.json
+
+# Secrets
+*.pfx
+*.p12
+*.cer
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+Logs/
+*.log
