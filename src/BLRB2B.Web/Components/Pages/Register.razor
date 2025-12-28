@@ -1,0 +1,271 @@
+@page "/register"
+@inject BLRB2B.Web.Services.AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Kayıt Ol - BLRB2B</PageTitle>
+
+<div class="auth-container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="auth-card">
+                <div class="auth-header text-center">
+                    <div class="auth-logo mb-3">
+                        <i class="bi bi-person-plus-fill text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h2 class="auth-title">Kayıt Ol</h2>
+                    <p class="auth-subtitle">BLRB2B Yönetim Paneli Hesabı Oluştur</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        @errorMessage
+                        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+                    </div>
+                }
+
+                @if (validationErrors.Any())
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Lütfen şu hataları düzeltin:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach (var error in validationErrors)
+                            {
+                                <li>@error</li>
+                            }
+                        </ul>
+                        <button type="button" class="btn-close" @onclick="() => validationErrors.Clear()"></button>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        @successMessage
+                        <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+                    </div>
+                }
+
+                <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+                    <DataAnnotationsValidator />
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="firstName" class="form-label">
+                                <i class="bi bi-person me-1"></i>Ad
+                            </label>
+                            <InputText id="firstName" class="form-control" @bind-Value="registerModel.FirstName" placeholder="Ad" disabled="@isLoading" />
+                            <ValidationMessage For="() => registerModel.FirstName" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="lastName" class="form-label">
+                                <i class="bi bi-person me-1"></i>Soyad
+                            </label>
+                            <InputText id="lastName" class="form-control" @bind-Value="registerModel.LastName" placeholder="Soyad" disabled="@isLoading" />
+                            <ValidationMessage For="() => registerModel.LastName" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            <i class="bi bi-envelope me-1"></i>Email
+                        </label>
+                        <InputText id="email" class="form-control" @bind-Value="registerModel.Email" placeholder="ornek@email.com" disabled="@isLoading" />
+                        <ValidationMessage For="() => registerModel.Email" class="text-danger small" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-at me-1"></i>Kullanıcı Adı
+                        </label>
+                        <InputText id="username" class="form-control" @bind-Value="registerModel.Username" placeholder="kullaniciadi" disabled="@isLoading" />
+                        <ValidationMessage For="() => registerModel.Username" class="text-danger small" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                <i class="bi bi-lock me-1"></i>Şifre
+                            </label>
+                            <div class="input-group">
+                                <InputText id="password" type="@passwordType" class="form-control" @bind-Value="registerModel.Password" placeholder="••••••••" disabled="@isLoading" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="TogglePasswordVisibility" disabled="@isLoading">
+                                    <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                                </button>
+                            </div>
+                            <ValidationMessage For="() => registerModel.Password" class="text-danger small" />
+                            <small class="text-muted">En az 6 karakter</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="confirmPassword" class="form-label">
+                                <i class="bi bi-lock-fill me-1"></i>Şifre Tekrar
+                            </label>
+                            <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="••••••••" disabled="@isLoading" />
+                            <ValidationMessage For="() => registerModel.ConfirmPassword" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <InputCheckbox id="terms" class="form-check-input" @bind-Value="agreeToTerms" disabled="@isLoading" />
+                        <label class="form-check-label" for="terms">
+                            <a href="/terms" class="text-primary text-decoration-none">Kullanım şartlarını</a> okudum ve kabul ediyorum
+                        </label>
+                    </div>
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Kayıt yapılıyor...</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-person-plus me-2"></i>Kayıt Ol</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+
+                <div class="auth-footer text-center">
+                    <p class="mb-0">
+                        Zaten hesabınız var mı?
+                        <a href="/login" class="text-primary text-decoration-none fw-bold">
+                            Giriş Yap
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    &copy; 2024 BLRB2B. Tüm hakları saklıdır.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private List<string> validationErrors = new();
+    private bool isLoading = false;
+    private bool showPassword = false;
+    private bool agreeToTerms = false;
+    private string passwordType = "password";
+    private bool _isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isInitialized)
+        {
+            _isInitialized = true;
+            // Eğer zaten giriş yapmışsa, dashboard'a yönlendir
+            await AuthService.InitializeAsync();
+
+            if (AuthService.IsAuthenticated)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        passwordType = showPassword ? "text" : "password";
+    }
+
+    private async Task HandleRegister()
+    {
+        if (isLoading) return;
+
+        errorMessage = null;
+        successMessage = null;
+        validationErrors.Clear();
+
+        // Şartları kabul etme kontrolü
+        if (!agreeToTerms)
+        {
+            errorMessage = "Lütfen kullanım şartlarını kabul edin.";
+            return;
+        }
+
+        // Client-side validation
+        if (string.IsNullOrWhiteSpace(registerModel.FirstName))
+        {
+            validationErrors.Add("Ad alanı gereklidir.");
+        }
+
+        if (string.IsNullOrWhiteSpace(registerModel.LastName))
+        {
+            validationErrors.Add("Soyad alanı gereklidir.");
+        }
+
+        if (string.IsNullOrWhiteSpace(registerModel.Email))
+        {
+            validationErrors.Add("Email alanı gereklidir.");
+        }
+
+        if (string.IsNullOrWhiteSpace(registerModel.Username))
+        {
+            validationErrors.Add("Kullanıcı adı alanı gereklidir.");
+        }
+
+        if (string.IsNullOrWhiteSpace(registerModel.Password) || registerModel.Password.Length < 6)
+        {
+            validationErrors.Add("Şifre en az 6 karakter olmalıdır.");
+        }
+
+        if (registerModel.Password != registerModel.ConfirmPassword)
+        {
+            validationErrors.Add("Şifreler eşleşmiyor.");
+        }
+
+        if (validationErrors.Any())
+        {
+            return;
+        }
+
+        isLoading = true;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(registerModel);
+
+            if (result != null && result.Success)
+            {
+                successMessage = result.Message;
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                if (result?.Errors != null && result.Errors.Any())
+                {
+                    validationErrors.AddRange(result.Errors);
+                }
+                else
+                {
+                    errorMessage = result?.Message ?? "Kayıt başarısız oldu. Lütfen tekrar deneyin.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Bir hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

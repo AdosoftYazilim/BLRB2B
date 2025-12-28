@@ -1,0 +1,154 @@
+@page "/customers/create"
+@using Microsoft.AspNetCore.Authorization
+@using BLRB2B.Application.Dto
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.ICustomerService CustomerService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Yeni Müşteri - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Yeni Müşteri</h1>
+            <p class="page-description">Yeni bir müşteri oluşturun.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline-secondary" @onclick="Cancel">
+                <i class="bi bi-arrow-left me-2"></i>Listeye Dön
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Müşteri Bilgileri</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+
+                    <!-- Company Information -->
+                    <h6 class="text-primary mb-3">Şirket Bilgileri</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label">Şirket Adı <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.CompanyName" />
+                            <ValidationMessage For="() => model.CompanyName" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Vergi No <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.TaxNumber" />
+                            <ValidationMessage For="() => model.TaxNumber" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Kredi Limiti <span class="text-danger">*</span></label>
+                            <InputNumber class="form-control" @bind-Value="model.CreditLimit" />
+                            <ValidationMessage For="() => model.CreditLimit" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <h6 class="text-primary mb-3">İletişim Bilgileri</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">İlgili Kişi <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.ContactName" />
+                            <ValidationMessage For="() => model.ContactName" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.PhoneNumber" />
+                            <ValidationMessage For="() => model.PhoneNumber" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label">E-posta <span class="text-danger">*</span></label>
+                            <InputText class="form-control" @bind-Value="model.Email" type="email" />
+                            <ValidationMessage For="() => model.Email" class="text-danger small" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Adres</label>
+                            <InputTextArea class="form-control" @bind-Value="model.Address" rows="2" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            <i class="bi bi-x-lg me-2"></i>İptal
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-check-lg me-2"></i>Kaydet
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">İpuçları</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Vergi numarası benzersiz olmalıdır</li>
+                    <li>Kredi limiti TL cinsinden girilmelidir</li>
+                    <li>İletişim bilgileri eksiksiz doldurulmalıdır</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CustomerCreateDto model = new();
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await CustomerService.CreateCustomerAsync(model);
+            NavigationManager.NavigateTo("/customers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Müşteri oluşturulurken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/customers");
+    }
+}

@@ -1,0 +1,76 @@
+@inject IJSRuntime JSRuntime
+
+<div class="modal @ModalClass" tabindex="-1" style="@ModalStyle">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <p>@Message</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="OnCancel">@CancelText</button>
+                <button type="button" class="btn @ConfirmButtonClass" @onclick="OnConfirm">@ConfirmText</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Show)
+{
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    private bool Show { get; set; } = false;
+    private string ModalClass => Show ? "show d-block" : "";
+    private string ModalStyle => Show ? "" : "display: none;";
+    private string Title { get; set; } = "Onay";
+    private string Message { get; set; } = "Bu işlemi onaylıyor musunuz?";
+    private string ConfirmText { get; set; } = "Onayla";
+    private string CancelText { get; set; } = "İptal";
+    private string ConfirmButtonClass { get; set; } = "btn-primary";
+    private Func<Task>? OnConfirmCallback { get; set; }
+    private Func<Task>? OnCancelCallback { get; set; }
+
+    public Task ShowAsync(
+        string message,
+        string? title = null,
+        string? confirmText = null,
+        string? cancelText = null,
+        string? confirmButtonClass = null,
+        Func<Task>? onConfirm = null,
+        Func<Task>? onCancel = null)
+    {
+        Message = message;
+        Title = title ?? "Onay";
+        ConfirmText = confirmText ?? "Onayla";
+        CancelText = cancelText ?? "İptal";
+        ConfirmButtonClass = confirmButtonClass ?? "btn-primary";
+        OnConfirmCallback = onConfirm;
+        OnCancelCallback = onCancel;
+        Show = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnConfirm()
+    {
+        Show = false;
+        if (OnConfirmCallback != null)
+        {
+            await OnConfirmCallback.Invoke();
+        }
+    }
+
+    private async Task OnCancel()
+    {
+        Show = false;
+        if (OnCancelCallback != null)
+        {
+            await OnCancelCallback.Invoke();
+        }
+    }
+}

@@ -1,0 +1,76 @@
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager NavigationManager
+
+<div class="sidebar @SidebarClass">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            <span class="brand-icon">B2B</span>
+            <span class="brand-text">BLRB2B</span>
+        </div>
+        <button class="sidebar-toggle" @onclick="ToggleSidebar">
+            <i class="bi bi-list"></i>
+        </button>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-section-title">Ana Menü</div>
+
+            <NavLink class="nav-item" href="/" Match="NavLinkMatch.All">
+                <span class="nav-icon">
+                    <i class="bi bi-speedometer2"></i>
+                </span>
+                <span class="nav-text">Dashboard</span>
+            </NavLink>
+
+            <NavLink class="nav-item" href="/products">
+                <span class="nav-icon">
+                    <i class="bi bi-box-seam"></i>
+                </span>
+                <span class="nav-text">Ürünler</span>
+            </NavLink>
+
+            <NavLink class="nav-item" href="/customers">
+                <span class="nav-icon">
+                    <i class="bi bi-people"></i>
+                </span>
+                <span class="nav-text">Müşteriler</span>
+            </NavLink>
+
+            <NavLink class="nav-item" href="/orders">
+                <span class="nav-icon">
+                    <i class="bi bi-cart-check"></i>
+                </span>
+                <span class="nav-text">Siparişler</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-title">Yönetim</div>
+
+            <NavLink class="nav-item" href="/reports">
+                <span class="nav-icon">
+                    <i class="bi bi-graph-up"></i>
+                </span>
+                <span class="nav-text">Raporlar</span>
+            </NavLink>
+
+            <NavLink class="nav-item" href="/settings">
+                <span class="nav-icon">
+                    <i class="bi bi-gear"></i>
+                </span>
+                <span class="nav-text">Ayarlar</span>
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool _isCollapsed = false;
+    private string SidebarClass => _isCollapsed ? "collapsed" : "";
+
+    private void ToggleSidebar()
+    {
+        _isCollapsed = !_isCollapsed;
+    }
+}

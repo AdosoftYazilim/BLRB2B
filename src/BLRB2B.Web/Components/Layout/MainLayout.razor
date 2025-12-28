@@ -1,0 +1,42 @@
+﻿@inherits LayoutComponentBase
+@using BLRB2B.Web.Components.Shared
+
+<div class="app-container">
+    <!-- Sidebar -->
+    <Sidebar />
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Header -->
+        <Header />
+
+        <!-- Page Content -->
+        <div class="content-wrapper">
+            @Body
+        </div>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <span>&copy; 2024 BLRB2B. Tüm hakları saklıdır.</span>
+                </div>
+                <div class="footer-right">
+                    <span>Version 1.0.0</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Error UI -->
+<div id="blazor-error-ui" data-nosnippet>
+    <environment include="Staging,Production">
+        An error has occurred. This application may no longer respond until reloaded.
+    </environment>
+    <environment include="Development">
+        An unhandled exception has occurred. See browser dev tools for details.
+    </environment>
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

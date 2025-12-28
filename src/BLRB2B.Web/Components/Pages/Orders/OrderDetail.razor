@@ -1,0 +1,277 @@
+@page "/orders/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using BLRB2B.Application.Dto
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.IOrderService OrderService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Sipariş Detayı - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Sipariş Detayı</h1>
+            <p class="page-description">Sipariş detaylarını görüntüleyin ve yönetin.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline-secondary" @onclick="GoToList">
+                <i class="bi bi-arrow-left me-2"></i>Listeye Dön
+            </button>
+            <button class="btn btn-primary" @onclick="PrintOrder">
+                <i class="bi bi-printer me-2"></i>Yazdır
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <LoadingSpinner Message="Sipariş yükleniyor..." />
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @errorMessage
+    </div>
+}
+else if (order != null)
+{
+    <div class="row">
+        <!-- Order Info Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Sipariş Bilgileri</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Sipariş No:</dt>
+                        <dd class="col-sm-7"><strong>@order.OrderNumber</strong></dd>
+
+                        <dt class="col-sm-5">Müşteri:</dt>
+                        <dd class="col-sm-7">@order.CustomerName</dd>
+
+                        <dt class="col-sm-5">Sipariş Tarihi:</dt>
+                        <dd class="col-sm-7">@order.OrderDate.ToString("dd.MM.yyyy HH:mm")</dd>
+
+                        <dt class="col-sm-5">Teslim Tarihi:</dt>
+                        <dd class="col-sm-7">@(order.DeliveryDate?.ToString("dd.MM.yyyy") ?? "-")</dd>
+
+                        <dt class="col-sm-5">Durum:</dt>
+                        <dd class="col-sm-7">
+                            @switch (order.Status)
+                            {
+                                case "Pending":
+                                    <span class="badge bg-warning">Beklemede</span>
+                                    break;
+                                case "Processing":
+                                    <span class="badge bg-info">İşleniyor</span>
+                                    break;
+                                case "Shipped":
+                                    <span class="badge bg-primary">Kargolandı</span>
+                                    break;
+                                case "Delivered":
+                                    <span class="badge bg-success">Teslim Edildi</span>
+                                    break;
+                                case "Cancelled":
+                                    <span class="badge bg-danger">İptal</span>
+                                    break;
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Shipping Address -->
+            @if (!string.IsNullOrEmpty(order.ShippingAddress))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">Teslimat Adresi</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@order.ShippingAddress</p>
+                    </div>
+                </div>
+            }
+
+            <!-- Notes -->
+            @if (!string.IsNullOrEmpty(order.Notes))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Notlar</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@order.Notes</p>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Order Items and Summary -->
+        <div class="col-lg-8">
+            <!-- Order Items -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Sipariş Kalemleri</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th class="text-center">Adet</th>
+                                    <th class="text-end">Birim Fiyat</th>
+                                    <th class="text-end">Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in order.OrderItems)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">@item.ProductName</div>
+                                            <small class="text-muted">@item.ProductSku</small>
+                                        </td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-end">@item.UnitPrice.ToString("C2")</td>
+                                        <td class="text-end fw-bold">@item.TotalPrice.ToString("C2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="row justify-content-end">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-6">Ara Toplam:</dt>
+                                <dd class="col-sm-6 text-end">@order.NetAmount.ToString("C2")</dd>
+
+                                <dt class="col-sm-6">İndirim:</dt>
+                                <dd class="col-sm-6 text-end text-success">-@order.DiscountAmount.ToString("C2")</dd>
+
+                                <dt class="col-sm-6">KDV:</dt>
+                                <dd class="col-sm-6 text-end">@order.TaxAmount.ToString("C2")</dd>
+
+                                <dt class="col-sm-6 fw-bold fs-5">Genel Toplam:</dt>
+                                <dd class="col-sm-6 text-end fw-bold fs-5 text-primary">@order.TotalAmount.ToString("C2")</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <label class="form-label me-2">Durum Güncelle:</label>
+                            <select class="form-select d-inline-block w-auto" @bind="newStatus">
+                                <option value="">Seçiniz...</option>
+                                <option value="Processing">İşleniyor</option>
+                                <option value="Shipped">Kargolandı</option>
+                                <option value="Delivered">Teslim Edildi</option>
+                                <option value="Cancelled">İptal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="btn btn-warning me-2" disabled="@(string.IsNullOrEmpty(newStatus) || isUpdating)" @onclick="UpdateStatus">
+                                @if (isUpdating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                Durumu Güncelle
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="GoToEdit">
+                                <i class="bi bi-pencil me-2"></i>Düzenle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private OrderDto? order;
+    private bool isLoading = true;
+    private bool isUpdating = false;
+    private string? errorMessage;
+    private string newStatus = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrderAsync();
+    }
+
+    private async Task LoadOrderAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            order = await OrderService.GetOrderByIdAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Sipariş yüklenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UpdateStatus()
+    {
+        if (string.IsNullOrEmpty(newStatus) || order == null)
+            return;
+
+        isUpdating = true;
+
+        try
+        {
+            await OrderService.UpdateOrderStatusAsync(Id, newStatus);
+            await LoadOrderAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Durum güncellenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isUpdating = false;
+            newStatus = string.Empty;
+        }
+    }
+
+    private void GoToList()
+    {
+        NavigationManager.NavigateTo("/orders");
+    }
+
+    private void GoToEdit()
+    {
+        NavigationManager.NavigateTo($"/orders/edit/{Id}");
+    }
+
+    private void PrintOrder()
+    {
+        // TODO: Implement print functionality
+    }
+}

@@ -1,0 +1,304 @@
+@page "/customers"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.ICustomerService CustomerService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Müşteriler - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Müşteriler</h1>
+            <p class="page-description">Tüm müşterilerinizi buradan yönetebilirsiniz.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-primary" @onclick="GoToCreate">
+                <i class="bi bi-plus-lg me-2"></i>Yeni Müşteri
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control"
+                           placeholder="Şirket adı, kişi veya e-posta ara..."
+                           @bind="viewModel.SearchTerm"
+                           @onkeyup="OnSearchKeyPress" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-fill" @onclick="LoadCustomers">
+                        <i class="bi bi-filter"></i> Filtrele
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="ResetFilters">
+                        <i class="bi bi-x-circle"></i> Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (viewModel.IsLoading)
+{
+    <LoadingSpinner Message="Müşteriler yükleniyor..." />
+}
+else if (!string.IsNullOrEmpty(viewModel.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @viewModel.ErrorMessage
+    </div>
+}
+else if (!viewModel.Customers.Items.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-people"></i>
+        <h3>Müşteri Bulunamadı</h3>
+        <p>Arama kriterlerinize uygun müşteri bulunamadı.</p>
+        <button class="btn btn-primary" @onclick="GoToCreate">
+            <i class="bi bi-plus-lg me-2"></i>İlk Müşteriyi Oluştur
+        </button>
+    </div>
+}
+else
+{
+    <!-- Customers Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Şirket</th>
+                            <th>İletişim</th>
+                            <th>Konum</th>
+                            <th class="text-end">Limit</th>
+                            <th class="text-center">Durum</th>
+                            <th class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var customer in viewModel.Customers.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">@customer.CompanyName</div>
+                                    <small class="text-muted">@customer.ContactPerson</small>
+                                </td>
+                                <td>
+                                    <div><i class="bi bi-envelope me-1"></i>@customer.Email</div>
+                                    <div><i class="bi bi-telephone me-1"></i>@customer.Phone</div>
+                                </td>
+                                <td>@customer.City</td>
+                                <td class="text-end fw-bold">@customer.CreditLimit.ToString("C2")</td>
+                                <td class="text-center">
+                                    @if (customer.IsActive)
+                                    {
+                                        <span class="badge bg-success">Aktif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Pasif</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" @onclick="() => GoToEdit(customer.Id)" title="Düzenle">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(customer)" title="Sil">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (viewModel.Customers.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted">
+                            Toplam @viewModel.Customers.TotalCount müşteri
+                            (Sayfa @viewModel.Customers.PageNumber/@viewModel.Customers.TotalPages)
+                        </span>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(!viewModel.Customers.HasPrevious ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Customers.PageNumber - 1)">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                            </li>
+                            @for (int i = 1; i <= viewModel.Customers.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == viewModel.Customers.PageNumber ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                </li>
+                            }
+                            <li class="page-item @(!viewModel.Customers.HasNext ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Customers.PageNumber + 1)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Müşteri Silme Onayı</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        <strong>@customerToDelete?.CompanyName</strong> adlı müşteriyi silmek istediğinizden emin misiniz?
+                    </p>
+                    <p class="text-danger mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Bu işlem geri alınamaz!
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">İptal</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync">
+                        <i class="bi bi-trash me-2"></i>Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    private CustomerListViewModel viewModel = new();
+    private CustomerListModel? customerToDelete;
+    private bool showDeleteModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        viewModel.IsLoading = true;
+        viewModel.ErrorMessage = null;
+
+        try
+        {
+            // TODO: Replace with actual API call
+            // var result = await CustomerService.GetCustomersAsync(viewModel.CurrentPage, viewModel.PageSize, viewModel.SearchTerm);
+
+            // Simulated data
+            viewModel.Customers = new PagedResult<CustomerListModel>
+            {
+                Items = new List<CustomerListModel>
+                {
+                    new() { Id = 1, CompanyName = "ABC Ltd. Şti.", ContactPerson = "Ahmet Yılmaz", Email = "ahmet@abc.com", Phone = "0212-555-0001", City = "İstanbul", IsActive = true, CreditLimit = 50000, CreatedDate = DateTime.Today },
+                    new() { Id = 2, CompanyName = "XYZ Corp.", ContactPerson = "Mehmet Demir", Email = "mehmet@xyz.com", Phone = "0216-555-0002", City = "İstanbul", IsActive = true, CreditLimit = 75000, CreatedDate = DateTime.Today },
+                    new() { Id = 3, CompanyName = "DEF Inc.", ContactPerson = "Ayşe Kaya", Email = "ayse@def.com", Phone = "0312-555-0003", City = "Ankara", IsActive = true, CreditLimit = 100000, CreatedDate = DateTime.Today },
+                },
+                TotalCount = 3,
+                PageNumber = 1,
+                PageSize = 10
+            };
+        }
+        catch (Exception ex)
+        {
+            viewModel.ErrorMessage = $"Müşteriler yüklenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            viewModel.IsLoading = false;
+        }
+    }
+
+    private void GoToCreate()
+    {
+        NavigationManager.NavigateTo("/customers/create");
+    }
+
+    private void GoToEdit(int id)
+    {
+        NavigationManager.NavigateTo($"/customers/edit/{id}");
+    }
+
+    private async Task ChangePage(int page)
+    {
+        viewModel.CurrentPage = page;
+        await LoadCustomers();
+    }
+
+    private void OnSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            viewModel.CurrentPage = 1;
+            Task.Run(async () => await LoadCustomers());
+        }
+    }
+
+    private void ResetFilters()
+    {
+        viewModel.SearchTerm = string.Empty;
+        viewModel.CurrentPage = 1;
+        Task.Run(async () => await LoadCustomers());
+    }
+
+    private void ConfirmDelete(CustomerListModel customer)
+    {
+        customerToDelete = customer;
+        showDeleteModal = true;
+    }
+
+    private void CancelDelete()
+    {
+        customerToDelete = null;
+        showDeleteModal = false;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (customerToDelete != null)
+        {
+            try
+            {
+                await CustomerService.DeleteCustomerAsync(customerToDelete.Id);
+                showDeleteModal = false;
+                await LoadCustomers();
+            }
+            catch (Exception ex)
+            {
+                viewModel.ErrorMessage = $"Silme işlemi başarısız: {ex.Message}";
+            }
+        }
+    }
+}

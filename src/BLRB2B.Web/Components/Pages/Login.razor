@@ -1,0 +1,289 @@
+@page "/login"
+@rendermode InteractiveServer
+@inject BLRB2B.Web.Services.AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Giriş Yap - BLRB2B</PageTitle>
+
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+    }
+    .login-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 100%;
+        max-width: 450px;
+    }
+    .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .login-logo {
+        font-size: 48px;
+        color: #0d6efd;
+        margin-bottom: 15px;
+    }
+    .login-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 8px;
+    }
+    .login-subtitle {
+        color: #6c757d;
+        font-size: 14px;
+        margin: 0;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    }
+    .btn-login {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .btn-login:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+    }
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .checkbox-group label {
+        margin: 0;
+        cursor: pointer;
+        user-select: none;
+    }
+    .alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    .alert-danger {
+        background: #fff5f5;
+        color: #c53030;
+        border: 1px solid #fed7d7;
+    }
+    .alert-success {
+        background: #f0fff4;
+        color: #2f855a;
+        border: 1px solid #c6f6d5;
+    }
+    .login-footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+    }
+    .login-footer p {
+        color: #6c757d;
+        font-size: 14px;
+        margin: 0;
+    }
+    .login-footer a {
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .login-footer a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="bi bi-box-seam-fill"></i>
+            </div>
+            <h1 class="login-title">Hoş Geldiniz</h1>
+            <p class="login-subtitle">BLRB2B Yönetim Paneli</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                @errorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                @successMessage
+            </div>
+        }
+
+        <div class="form-group">
+            <label class="form-label" for="email">
+                <i class="bi bi-envelope me-1"></i>Email veya Kullanıcı Adı
+            </label>
+            <input id="email"
+                   type="email"
+                   class="form-control"
+                   placeholder="ornek@email.com"
+                   @bind="loginModel.Email"
+                   @bind:event="oninput"
+                   disabled="@isLoading" />
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="password">
+                <i class="bi bi-lock me-1"></i>Şifre
+            </label>
+            <input id="password"
+                   type="password"
+                   class="form-control"
+                   placeholder="••••••••"
+                   @bind="loginModel.Password"
+                   @bind:event="oninput"
+                   disabled="@isLoading" />
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox"
+                   id="rememberMe"
+                   @bind="loginModel.RememberMe"
+                   disabled="@isLoading" />
+            <label for="rememberMe">Beni Hatırla</label>
+        </div>
+
+        <button type="button" class="btn-login" disabled="@isLoading" @onclick="HandleLoginClick">
+            @if (isLoading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Giriş yapılıyor...</span>
+            }
+            else
+            {
+                <span><i class="bi bi-box-arrow-in-right me-2"></i>Giriş Yap</span>
+            }
+        </button>
+
+        <div class="login-footer">
+            <p>Hesabınız yok mu? <a href="/register">Kayıt Ol</a></p>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <small style="color: #6c757d;">&copy; 2024 BLRB2B. Tüm hakları saklıdır.</small>
+        </div>
+    </div>
+</div>
+
+@code {
+    private BLRB2B.Web.Services.LoginModel loginModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+    private bool _isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_isInitialized)
+        {
+            _isInitialized = true;
+            try
+            {
+                await AuthService.InitializeAsync();
+                if (AuthService.IsAuthenticated)
+                {
+                    NavigationManager.NavigateTo("/", true);
+                }
+            }
+            catch
+            {
+                // Ignore errors during initialization
+            }
+        }
+    }
+
+    private async Task HandleLoginClick()
+    {
+        if (isLoading) return;
+
+        if (string.IsNullOrWhiteSpace(loginModel.Email) || string.IsNullOrWhiteSpace(loginModel.Password))
+        {
+            errorMessage = "Lütfen email ve şifre alanlarını doldurun.";
+            return;
+        }
+
+        errorMessage = null;
+        successMessage = null;
+        isLoading = true;
+
+        try
+        {
+            var result = await AuthService.LoginAsync(loginModel);
+
+            if (result != null && result.Success)
+            {
+                successMessage = "Giriş başarılı! Yönlendiriliyorsunuz...";
+                await Task.Delay(500);
+                NavigationManager.NavigateTo("/", true);
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "Giriş başarısız oldu. Lütfen bilgilerinizi kontrol edin.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Bir hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

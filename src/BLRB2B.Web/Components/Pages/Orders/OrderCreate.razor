@@ -1,0 +1,307 @@
+@page "/orders/create"
+@using Microsoft.AspNetCore.Authorization
+@using BLRB2B.Application.Dto
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.IOrderService OrderService
+@inject BLRB2B.Application.Interfaces.ICustomerService CustomerService
+@inject BLRB2B.Application.Interfaces.IProductService ProductService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Yeni Sipariş - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Yeni Sipariş</h1>
+            <p class="page-description">Yeni bir sipariş oluşturun.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline-secondary" @onclick="Cancel">
+                <i class="bi bi-arrow-left me-2"></i>Listeye Dön
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Sipariş Bilgileri</h5>
+            </div>
+            <div class="card-body">
+                <EditForm Model="model" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+
+                    <!-- Customer Selection -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label">Müşteri <span class="text-danger">*</span></label>
+                            <InputSelect class="form-select" @bind-Value="model.CustomerId">
+                                <option value="">Müşteri Seçiniz...</option>
+                                @if (customers != null)
+                                {
+                                    @foreach (var customer in customers)
+                                    {
+                                        <option value="@customer.Id">@customer.CompanyName</option>
+                                    }
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="() => model.CustomerId" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Teslim Tarihi</label>
+                            <InputDate class="form-control" @bind-Value="model.DeliveryDate" />
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <h6 class="text-primary mb-3">Sipariş Kalemleri</h6>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50%;">Ürün</th>
+                                    <th style="width: 20%;">Adet</th>
+                                    <th style="width: 25%;">Toplam</th>
+                                    <th style="width: 5%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < model.OrderItems.Count; i++)
+                                {
+                                    var item = model.OrderItems[i];
+                                    <tr>
+                                        <td>
+                                            <InputSelect class="form-select form-select-sm" @bind-Value="item.ProductId">
+                                                <option value="0">Ürün Seçiniz...</option>
+                                                @if (products != null)
+                                                {
+                                                    @foreach (var product in products)
+                                                    {
+                                                        <option value="@product.Id">@product.Name (@product.Sku)</option>
+                                                    }
+                                                }
+                                            </InputSelect>
+                                        </td>
+                                        <td>
+                                            <InputNumber class="form-control form-control-sm" @bind-Value="item.Quantity" min="1" />
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="fw-bold">@CalculateItemTotal(item, i).ToString("C2")</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(i)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddItem">
+                                            <i class="bi bi-plus-lg me-1"></i>Kalem Ekle
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="row justify-content-end mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <dl class="row mb-0">
+                                        <dt class="col-sm-6">Ara Toplam:</dt>
+                                        <dd class="col-sm-6 text-end">@CalculateSubTotal().ToString("C2")</dd>
+
+                                        <dt class="col-sm-6">KDV (%20):</dt>
+                                        <dd class="col-sm-6 text-end">@CalculateTax().ToString("C2")</dd>
+
+                                        <dt class="col-sm-6 fw-bold">Genel Toplam:</dt>
+                                        <dd class="col-sm-6 text-end fw-bold text-primary fs-5">@CalculateTotal().ToString("C2")</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes & Address -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Teslimat Adresi</label>
+                            <InputTextArea class="form-control" @bind-Value="model.ShippingAddress" rows="2" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Notlar</label>
+                            <InputTextArea class="form-control" @bind-Value="model.Notes" rows="2" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                            <i class="bi bi-x-lg me-2"></i>İptal
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-check-lg me-2"></i>Siparişi Oluştur
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">İpuçları</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Önce müşteri seçiniz</li>
+                    <li>En az bir ürün eklemelisiniz</li>
+                    <li>Fiyatlar KDV hariçtir</li>
+                    <li>İndirim kalem başına uygulanır</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private OrderCreateDto model = new() { OrderItems = new List<OrderItemCreateDto>() };
+    private List<CustomerDto>? customers;
+    private List<ProductDto>? products;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookupsAsync();
+        AddItem(); // Add first item row
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            customers = (await CustomerService.GetAllCustomersAsync()).ToList();
+            products = (await ProductService.GetAllProductsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Veriler yüklenirken hata oluştu: {ex.Message}";
+        }
+    }
+
+    private void AddItem()
+    {
+        model.OrderItems.Add(new OrderItemCreateDto { Quantity = 1 });
+    }
+
+    private void RemoveItem(int index)
+    {
+        if (model.OrderItems.Count > 1)
+        {
+            model.OrderItems.RemoveAt(index);
+        }
+    }
+
+    private void OnProductChanged(int index)
+    {
+        // Product selection changed - refresh UI if needed
+    }
+
+    private decimal CalculateItemTotal(OrderItemCreateDto item, int index)
+    {
+        if (products != null && item.ProductId > 0)
+        {
+            var product = products.FirstOrDefault(p => p.Id == item.ProductId);
+            if (product != null)
+            {
+                return item.Quantity * product.Price;
+            }
+        }
+        return 0;
+    }
+
+    private decimal CalculateSubTotal()
+    {
+        decimal total = 0;
+        if (products != null)
+        {
+            foreach (var item in model.OrderItems)
+            {
+                if (item.ProductId > 0)
+                {
+                    var product = products.FirstOrDefault(p => p.Id == item.ProductId);
+                    if (product != null)
+                    {
+                        total += item.Quantity * product.Price;
+                    }
+                }
+            }
+        }
+        return total;
+    }
+
+    private decimal CalculateTax()
+    {
+        return CalculateSubTotal() * 0.20m; // 20% VAT
+    }
+
+    private decimal CalculateTotal()
+    {
+        return CalculateSubTotal() + CalculateTax();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (model.OrderItems.Count == 0 || model.OrderItems.All(i => i.ProductId == 0))
+        {
+            errorMessage = "En az bir ürün seçmelisiniz.";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await OrderService.CreateOrderAsync(model);
+            NavigationManager.NavigateTo($"/orders/{result?.Id ?? 0}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Sipariş oluşturulurken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/orders");
+    }
+}

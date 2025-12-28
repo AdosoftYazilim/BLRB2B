@@ -1,0 +1,125 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<header class="main-header">
+    <div class="header-left">
+        <button class="mobile-menu-toggle" @onclick="ToggleMobileSidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="breadcrumb">
+            <span class="breadcrumb-item">@CurrentPageTitle</span>
+        </div>
+    </div>
+
+    <div class="header-right">
+        <div class="header-actions">
+            <!-- Notifications -->
+            <div class="header-action-item">
+                <button class="action-btn" @onclick="ShowNotifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="badge badge-danger">3</span>
+                </button>
+            </div>
+
+            <!-- Language Selector -->
+            <div class="header-action-item dropdown">
+                <button class="action-btn dropdown-toggle" @onclick="ToggleLanguageDropdown">
+                    <i class="bi bi-globe"></i>
+                    <span>TR</span>
+                </button>
+                @if (showLanguageDropdown)
+                {
+                    <div class="dropdown-menu dropdown-menu-end show">
+                        <a class="dropdown-item active" @onclick="@(() => ChangeLanguage("tr"))">Türkçe</a>
+                        <a class="dropdown-item" @onclick="@(() => ChangeLanguage("en"))">English</a>
+                    </div>
+                }
+            </div>
+
+            <!-- User Menu -->
+            <div class="header-action-item dropdown">
+                <button class="user-menu-btn dropdown-toggle" @onclick="ToggleUserDropdown">
+                    <div class="user-avatar">
+                        <i class="bi bi-person-circle"></i>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-name">@userName</span>
+                        <span class="user-role">@userRole</span>
+                    </div>
+                </button>
+                @if (showUserDropdown)
+                {
+                    <div class="dropdown-menu dropdown-menu-end show">
+                        <div class="dropdown-header">
+                            <strong>@userName</strong>
+                            <div class="text-muted small">@userEmail</div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="/profile">
+                            <i class="bi bi-person"></i> Profil
+                        </a>
+                        <a class="dropdown-item" href="/settings">
+                            <i class="bi bi-gear"></i> Ayarlar
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item text-danger" href="/logout">
+                            <i class="bi bi-box-arrow-right"></i> Çıkış Yap
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</header>
+
+@code {
+    private string userName = "Admin User";
+    private string userEmail = "admin@blrb2b.com";
+    private string userRole = "Administrator";
+    private bool showUserDropdown = false;
+    private bool showLanguageDropdown = false;
+    private string CurrentPageTitle = "Dashboard";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userName = user.FindFirst(c => c.Type == ClaimTypes.Name)?.Value ?? "User";
+            userEmail = user.FindFirst(c => c.Type == ClaimTypes.Email)?.Value ?? "";
+            userRole = user.FindFirst(c => c.Type == ClaimTypes.Role)?.Value ?? "User";
+        }
+    }
+
+    private void ToggleUserDropdown()
+    {
+        showUserDropdown = !showUserDropdown;
+        showLanguageDropdown = false;
+    }
+
+    private void ToggleLanguageDropdown()
+    {
+        showLanguageDropdown = !showLanguageDropdown;
+        showUserDropdown = false;
+    }
+
+    private void ShowNotifications()
+    {
+        // TODO: Implement notifications
+    }
+
+    private void ChangeLanguage(string lang)
+    {
+        showLanguageDropdown = false;
+        // TODO: Implement language change
+    }
+
+    private void ToggleMobileSidebar()
+    {
+        // TODO: Toggle mobile sidebar
+    }
+}

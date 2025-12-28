@@ -1,0 +1,276 @@
+@page "/"
+@inject BLRB2B.Application.Interfaces.IProductService ProductService
+@inject BLRB2B.Application.Interfaces.ICustomerService CustomerService
+@inject BLRB2B.Application.Interfaces.IOrderService OrderService
+
+<PageTitle>Dashboard - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-description">Hoş geldiniz! İşte bugünün özeti.</p>
+</div>
+
+@if (viewModel.IsLoading)
+{
+    <LoadingSpinner Message="Veriler yükleniyor..." />
+}
+else if (!string.IsNullOrEmpty(viewModel.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @viewModel.ErrorMessage
+    </div>
+}
+else
+{
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card stat-primary">
+                <div class="stat-icon">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Toplam Ürün</div>
+                    <div class="stat-value">@viewModel.Summary.TotalProducts</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card stat-success">
+                <div class="stat-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Toplam Müşteri</div>
+                    <div class="stat-value">@viewModel.Summary.TotalCustomers</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card stat-info">
+                <div class="stat-icon">
+                    <i class="bi bi-cart-check"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Toplam Sipariş</div>
+                    <div class="stat-value">@viewModel.Summary.TotalOrders</div>
+                    <div class="stat-sub">Bekleyen: @viewModel.Summary.PendingOrders</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card stat-warning">
+                <div class="stat-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">Toplam Gelir</div>
+                    <div class="stat-value">@viewModel.Summary.TotalRevenue.ToString("C2")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts and Tables Row -->
+    <div class="row">
+        <!-- Low Stock Products -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="bi bi-exclamation-triangle text-warning"></i>
+                        Düşük Stok
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (viewModel.LowStockProducts.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Ürün</th>
+                                        <th class="text-center">Stok</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var product in viewModel.LowStockProducts.Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold">@product.Name</div>
+                                                <small class="text-muted">@product.Sku</small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-danger">@product.StockQuantity</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">Düşük stokta ürün bulunmuyor.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        Son Siparişler
+                    </h5>
+                    <a href="/orders" class="btn btn-sm btn-primary">Tümünü Gör</a>
+                </div>
+                <div class="card-body">
+                    @if (viewModel.RecentOrders.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Sipariş No</th>
+                                        <th>Müşteri</th>
+                                        <th class="text-end">Tutar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in viewModel.RecentOrders.Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <a href="/orders/@order.Id" class="text-decoration-none">
+                                                    @order.OrderNumber
+                                                </a>
+                                            </td>
+                                            <td>@order.CustomerName</td>
+                                            <td class="text-end">@order.TotalAmount.ToString("C2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">Henüz sipariş bulunmuyor.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Customers -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-trophy text-warning"></i>
+                        En İyi Müşteriler
+                    </h5>
+                    <a href="/customers" class="btn btn-sm btn-primary">Tümünü Gör</a>
+                </div>
+                <div class="card-body">
+                    @if (viewModel.TopCustomers.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Müşteri</th>
+                                        <th class="text-end">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var customer in viewModel.TopCustomers.Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <a href="/customers/@customer.Id" class="text-decoration-none">
+                                                    @customer.CompanyName
+                                                </a>
+                                                <small class="d-block text-muted">@customer.OrderCount sipariş</small>
+                                            </td>
+                                            <td class="text-end fw-bold">@customer.TotalPurchased.ToString("C2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">Henüz müşteri bulunmuyor.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private DashboardViewModel viewModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        viewModel.IsLoading = true;
+        viewModel.ErrorMessage = null;
+
+        try
+        {
+            // TODO: Replace with actual API calls
+            // Simulated data for now
+            viewModel.Summary = new DashboardSummaryModel
+            {
+                TotalProducts = 156,
+                TotalCustomers = 42,
+                TotalOrders = 389,
+                TotalRevenue = 542500,
+                PendingOrders = 23,
+                LowStockProducts = 8
+            };
+
+            viewModel.RecentOrders = new List<RecentOrderModel>
+            {
+                new() { Id = 1, OrderNumber = "ORD-2024-001", CustomerName = "ABC Ltd.", TotalAmount = 12500, Status = "Pending", OrderDate = DateTime.Today },
+                new() { Id = 2, OrderNumber = "ORD-2024-002", CustomerName = "XYZ Corp.", TotalAmount = 8750, Status = "Shipped", OrderDate = DateTime.Today.AddDays(-1) },
+                new() { Id = 3, OrderNumber = "ORD-2024-003", CustomerName = "DEF Inc.", TotalAmount = 15600, Status = "Processing", OrderDate = DateTime.Today.AddDays(-2) },
+            };
+
+            viewModel.TopCustomers = new List<TopCustomerModel>
+            {
+                new() { Id = 1, CompanyName = "ABC Ltd.", TotalPurchased = 125000, OrderCount = 45 },
+                new() { Id = 2, CompanyName = "XYZ Corp.", TotalPurchased = 98500, OrderCount = 38 },
+                new() { Id = 3, CompanyName = "DEF Inc.", TotalPurchased = 76000, OrderCount = 28 },
+            };
+
+            viewModel.LowStockProducts = new List<LowStockProductModel>
+            {
+                new() { Id = 1, Name = "Product A", Sku = "SKU-001", StockQuantity = 5, ReorderLevel = 10 },
+                new() { Id = 2, Name = "Product B", Sku = "SKU-002", StockQuantity = 3, ReorderLevel = 15 },
+            };
+        }
+        catch (Exception ex)
+        {
+            viewModel.ErrorMessage = $"Veriler yüklenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            viewModel.IsLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

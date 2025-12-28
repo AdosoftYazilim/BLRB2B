@@ -1,0 +1,30 @@
+<div class="loading-spinner-container @ContainerClass">
+    <div class="spinner-border @SpinnerClass" role="status" style="@Style">
+        <span class="visually-hidden">Yükleniyor...</span>
+    </div>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="loading-message">@Message</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Size { get; set; } = "md"; // sm, md, lg
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public bool Centered { get; set; } = true;
+
+    [Parameter]
+    public string Color { get; set; } = "primary"; // primary, secondary, success, etc.
+
+    [Parameter]
+    public bool FullScreen { get; set; } = false;
+
+    private string ContainerClass => FullScreen ? "fullscreen" : (Centered ? "centered" : "");
+    private string SpinnerClass => $"text-{Color} spinner-border-{Size}";
+    private string Style => FullScreen ? "width: 3rem; height: 3rem;" : "";
+}

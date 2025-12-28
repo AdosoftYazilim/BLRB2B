@@ -1,0 +1,320 @@
+@page "/products"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.IProductService ProductService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Ürünler - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Ürünler</h1>
+            <p class="page-description">Tüm ürünlerinizi buradan yönetebilirsiniz.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-primary" @onclick="GoToCreate">
+                <i class="bi bi-plus-lg me-2"></i>Yeni Ürün
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control"
+                           placeholder="Ürün adı, SKU veya kategori ara..."
+                           @bind="viewModel.SearchTerm"
+                           @onkeyup="OnSearchKeyPress" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-fill" @onclick="LoadProducts">
+                        <i class="bi bi-filter"></i> Filtrele
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="ResetFilters">
+                        <i class="bi bi-x-circle"></i> Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (viewModel.IsLoading)
+{
+    <LoadingSpinner Message="Ürünler yükleniyor..." />
+}
+else if (!string.IsNullOrEmpty(viewModel.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @viewModel.ErrorMessage
+    </div>
+}
+else if (!viewModel.Products.Items.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-box-seam"></i>
+        <h3>Ürün Bulunamadı</h3>
+        <p>Arama kriterlerinize uygun ürün bulunamadı.</p>
+        <button class="btn btn-primary" @onclick="GoToCreate">
+            <i class="bi bi-plus-lg me-2"></i>İlk Ürünü Oluştur
+        </button>
+    </div>
+}
+else
+{
+    <!-- Products Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ürün Adı</th>
+                            <th>SKU</th>
+                            <th>Kategori</th>
+                            <th class="text-end">Fiyat</th>
+                            <th class="text-center">Stok</th>
+                            <th class="text-center">Durum</th>
+                            <th class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in viewModel.Products.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        @if (!string.IsNullOrEmpty(product.Name))
+                                        {
+                                            <div class="product-avatar">
+                                                <span>@product.Name.Substring(0, 1).ToUpper()</span>
+                                            </div>
+                                        }
+                                        <div>
+                                            <div class="fw-bold">@product.Name</div>
+                                            <small class="text-muted">@product.Id</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <code>@product.Sku</code>
+                                </td>
+                                <td>@product.CategoryName</td>
+                                <td class="text-end fw-bold">@product.Price.ToString("C2")</td>
+                                <td class="text-center">
+                                    <span class="badge @(product.StockQuantity < 10 ? "bg-danger" : product.StockQuantity < 20 ? "bg-warning" : "bg-success")">
+                                        @product.StockQuantity
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if (product.IsActive)
+                                    {
+                                        <span class="badge bg-success">Aktif</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Pasif</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" @onclick="() => GoToEdit(product.Id)" title="Düzenle">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" @onclick="() => ConfirmDelete(product)" title="Sil">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (viewModel.Products.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted">
+                            Toplam @viewModel.Products.TotalCount ürün
+                            (Sayfa @viewModel.Products.PageNumber/@viewModel.Products.TotalPages)
+                        </span>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(!viewModel.Products.HasPrevious ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Products.PageNumber - 1)">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                            </li>
+                            @for (int i = 1; i <= viewModel.Products.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == viewModel.Products.PageNumber ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                </li>
+                            }
+                            <li class="page-item @(!viewModel.Products.HasNext ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Products.PageNumber + 1)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ürün Silme Onayı</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        <strong>@productToDelete?.Name</strong> adlı ürünü silmek istediğinizden emin misiniz?
+                    </p>
+                    <p class="text-danger mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Bu işlem geri alınamaz!
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">İptal</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync">
+                        <i class="bi bi-trash me-2"></i>Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+@code {
+    private ProductListViewModel viewModel = new();
+    private ProductListModel? productToDelete;
+    private bool showDeleteModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        viewModel.IsLoading = true;
+        viewModel.ErrorMessage = null;
+
+        try
+        {
+            // TODO: Replace with actual API call
+            // var result = await ProductService.GetProductsAsync(viewModel.CurrentPage, viewModel.PageSize, viewModel.SearchTerm);
+
+            // Simulated data
+            viewModel.Products = new PagedResult<ProductListModel>
+            {
+                Items = new List<ProductListModel>
+                {
+                    new() { Id = 1, Name = "Laptop Pro 15", Sku = "LP-001", Price = 25000, StockQuantity = 25, CategoryName = "Elektronik", IsActive = true, CreatedDate = DateTime.Today },
+                    new() { Id = 2, Name = "Kablosuz Mouse", Sku = "KM-002", Price = 450, StockQuantity = 150, CategoryName = "Aksesuar", IsActive = true, CreatedDate = DateTime.Today },
+                    new() { Id = 3, Name = "Mekanik Klavye", Sku = "MK-003", Price = 1200, StockQuantity = 5, CategoryName = "Aksesuar", IsActive = true, CreatedDate = DateTime.Today },
+                    new() { Id = 4, Name = "27\" Monitör", Sku = "MN-004", Price = 4500, StockQuantity = 18, CategoryName = "Elektronik", IsActive = true, CreatedDate = DateTime.Today },
+                },
+                TotalCount = 4,
+                PageNumber = 1,
+                PageSize = 10
+            };
+        }
+        catch (Exception ex)
+        {
+            viewModel.ErrorMessage = $"Ürünler yüklenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            viewModel.IsLoading = false;
+        }
+    }
+
+    private void GoToCreate()
+    {
+        NavigationManager.NavigateTo("/products/create");
+    }
+
+    private void GoToEdit(int id)
+    {
+        NavigationManager.NavigateTo($"/products/edit/{id}");
+    }
+
+    private async Task ChangePage(int page)
+    {
+        viewModel.CurrentPage = page;
+        await LoadProducts();
+    }
+
+    private void OnSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            viewModel.CurrentPage = 1;
+            Task.Run(async () => await LoadProducts());
+        }
+    }
+
+    private void ResetFilters()
+    {
+        viewModel.SearchTerm = string.Empty;
+        viewModel.CurrentPage = 1;
+        Task.Run(async () => await LoadProducts());
+    }
+
+    private void ConfirmDelete(ProductListModel product)
+    {
+        productToDelete = product;
+        showDeleteModal = true;
+    }
+
+    private void CancelDelete()
+    {
+        productToDelete = null;
+        showDeleteModal = false;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (productToDelete != null)
+        {
+            try
+            {
+                await ProductService.DeleteProductAsync(productToDelete.Id);
+                showDeleteModal = false;
+                await LoadProducts();
+            }
+            catch (Exception ex)
+            {
+                viewModel.ErrorMessage = $"Silme işlemi başarısız: {ex.Message}";
+            }
+        }
+    }
+}

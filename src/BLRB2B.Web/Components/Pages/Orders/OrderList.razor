@@ -1,0 +1,271 @@
+@page "/orders"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject BLRB2B.Application.Interfaces.IOrderService OrderService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Siparişler - BLRB2B</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-content">
+        <div>
+            <h1 class="page-title">Siparişler</h1>
+            <p class="page-description">Tüm siparişlerinizi buradan yönetebilirsiniz.</p>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-primary" @onclick="GoToCreate">
+                <i class="bi bi-plus-lg me-2"></i>Yeni Sipariş
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control"
+                           placeholder="Sipariş no veya müşteri ara..."
+                           @bind="viewModel.SearchTerm"
+                           @onkeyup="OnSearchKeyPress" />
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="viewModel.StatusFilter">
+                    <option value="">Tüm Durumlar</option>
+                    <option value="0">Beklemede</option>
+                    <option value="1">İşleniyor</option>
+                    <option value="2">Kargolandı</option>
+                    <option value="3">Teslim Edildi</option>
+                    <option value="4">İptal</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary flex-fill" @onclick="LoadOrders">
+                        <i class="bi bi-filter"></i> Filtrele
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="ResetFilters">
+                        <i class="bi bi-x-circle"></i> Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (viewModel.IsLoading)
+{
+    <LoadingSpinner Message="Siparişler yükleniyor..." />
+}
+else if (!string.IsNullOrEmpty(viewModel.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @viewModel.ErrorMessage
+    </div>
+}
+else if (!viewModel.Orders.Items.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-cart-check"></i>
+        <h3>Sipariş Bulunamadı</h3>
+        <p>Arama kriterlerinize uygun sipariş bulunamadı.</p>
+        <button class="btn btn-primary" @onclick="GoToCreate">
+            <i class="bi bi-plus-lg me-2"></i>İlk Siparişi Oluştur
+        </button>
+    </div>
+}
+else
+{
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sipariş No</th>
+                            <th>Müşteri</th>
+                            <th>Tarih</th>
+                            <th class="text-end">Tutar</th>
+                            <th class="text-center">Durum</th>
+                            <th class="text-center">Adet</th>
+                            <th class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in viewModel.Orders.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a href="/orders/@order.Id" class="text-decoration-none fw-bold">
+                                        @order.OrderNumber
+                                    </a>
+                                </td>
+                                <td>@order.CustomerName</td>
+                                <td>@order.OrderDate.ToString("dd.MM.yyyy")</td>
+                                <td class="text-end fw-bold">@order.TotalAmount.ToString("C2")</td>
+                                <td class="text-center">
+                                    @switch (order.Status)
+                                    {
+                                        case "Pending":
+                                            <span class="badge bg-warning">Beklemede</span>
+                                            break;
+                                        case "Processing":
+                                            <span class="badge bg-info">İşleniyor</span>
+                                            break;
+                                        case "Shipped":
+                                            <span class="badge bg-primary">Kargolandı</span>
+                                            break;
+                                        case "Delivered":
+                                            <span class="badge bg-success">Teslim Edildi</span>
+                                            break;
+                                        case "Cancelled":
+                                            <span class="badge bg-danger">İptal</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@order.ItemCount</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" @onclick="() => ViewOrder(order.Id)" title="Detay">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" @onclick="() => GoToEdit(order.Id)" title="Düzenle">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (viewModel.Orders.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted">
+                            Toplam @viewModel.Orders.TotalCount sipariş
+                            (Sayfa @viewModel.Orders.PageNumber/@viewModel.Orders.TotalPages)
+                        </span>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(!viewModel.Orders.HasPrevious ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Orders.PageNumber - 1)">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                            </li>
+                            @for (int i = 1; i <= viewModel.Orders.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == viewModel.Orders.PageNumber ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(i)">@i</button>
+                                </li>
+                            }
+                            <li class="page-item @(!viewModel.Orders.HasNext ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(viewModel.Orders.PageNumber + 1)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private OrderListViewModel viewModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        viewModel.IsLoading = true;
+        viewModel.ErrorMessage = null;
+
+        try
+        {
+            // TODO: Replace with actual API call
+            // var result = await OrderService.GetOrdersAsync(viewModel.CurrentPage, viewModel.PageSize, viewModel.SearchTerm, viewModel.StatusFilter);
+
+            // Simulated data
+            viewModel.Orders = new PagedResult<OrderListModel>
+            {
+                Items = new List<OrderListModel>
+                {
+                    new() { Id = 1, OrderNumber = "ORD-2024-001", CustomerName = "ABC Ltd. Şti.", OrderDate = DateTime.Today, TotalAmount = 12500, Status = "Pending", ItemCount = 3 },
+                    new() { Id = 2, OrderNumber = "ORD-2024-002", CustomerName = "XYZ Corp.", OrderDate = DateTime.Today.AddDays(-1), TotalAmount = 8750, Status = "Shipped", ItemCount = 2 },
+                    new() { Id = 3, OrderNumber = "ORD-2024-003", CustomerName = "DEF Inc.", OrderDate = DateTime.Today.AddDays(-2), TotalAmount = 15600, Status = "Processing", ItemCount = 5 },
+                    new() { Id = 4, OrderNumber = "ORD-2024-004", CustomerName = "ABC Ltd. Şti.", OrderDate = DateTime.Today.AddDays(-3), TotalAmount = 5000, Status = "Delivered", ItemCount = 1 },
+                },
+                TotalCount = 4,
+                PageNumber = 1,
+                PageSize = 10
+            };
+        }
+        catch (Exception ex)
+        {
+            viewModel.ErrorMessage = $"Siparişler yüklenirken hata oluştu: {ex.Message}";
+        }
+        finally
+        {
+            viewModel.IsLoading = false;
+        }
+    }
+
+    private void GoToCreate()
+    {
+        NavigationManager.NavigateTo("/orders/create");
+    }
+
+    private void ViewOrder(int id)
+    {
+        NavigationManager.NavigateTo($"/orders/{id}");
+    }
+
+    private void GoToEdit(int id)
+    {
+        NavigationManager.NavigateTo($"/orders/edit/{id}");
+    }
+
+    private async Task ChangePage(int page)
+    {
+        viewModel.CurrentPage = page;
+        await LoadOrders();
+    }
+
+    private void OnSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            viewModel.CurrentPage = 1;
+            Task.Run(async () => await LoadOrders());
+        }
+    }
+
+    private void ResetFilters()
+    {
+        viewModel.SearchTerm = string.Empty;
+        viewModel.StatusFilter = null;
+        viewModel.CurrentPage = 1;
+        Task.Run(async () => await LoadOrders());
+    }
+}
